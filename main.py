@@ -14,7 +14,7 @@ import pyautogui
 from PIL import Image
 from PyQt5 import Qt as pyqt5Qt
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QKeySequence, QTextCursor
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QHBoxLayout, QKeySequenceEdit, QLabel, QLineEdit, \
     QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget, QDesktopWidget, QSlider
 from fpdf import FPDF
@@ -129,7 +129,8 @@ class Main:
         self.pdf_save_name = None
         self.pdf_save_path = None
         self.key_listener_thread = None
-        self.stop_listener_Thread = None
+        self.stop_listener_thread = None
+        self.screenshot_thread = None
         # theme
         self.app_theme: (None, str) = "dark_lightgreen"  # settable
         self.app_theme_list: list[str] = ["None"] + list(qt_material.list_themes())
@@ -145,7 +146,8 @@ class Main:
         self.pdf_save_name = None
         self.pdf_save_path = None
         self.key_listener_thread = None
-        self.stop_listener_Thread = None
+        self.stop_listener_thread = None
+        self.screenshot_thread = None
 
     @staticmethod
     def current_time_str(year=True, month=True, day=True, hour=True, minute=True, second=True, microsecond=True) -> str:
@@ -180,6 +182,22 @@ class Main:
                 return True
         return False
 
+    def set_pdf_path(self, pdf_path=None, pdf_dir_path=None, pdf_name=None):
+        if pdf_path is not None:
+            # 如果用户没有输入文件后缀名，则自动添加 .pdf 后缀
+            if not pdf_path.endswith(".pdf"):
+                pdf_path += ".pdf"
+            # 获取所选文件夹路径和文件名
+            pdf_dir_path, pdf_name = os.path.split(pdf_path)
+        elif pdf_dir_path is not None and pdf_name is not None:
+            if not pdf_name.endswith(".pdf"):
+                pdf_name += ".pdf"
+            pdf_path = os.path.join(pdf_dir_path, pdf_name)
+        else:
+            return None
+        self.pdf_save_path, self.pdf_save_name, self.save_pdf_dir_path = pdf_path, pdf_name, pdf_dir_path
+        return pdf_path
+
     def ask_save_path_and_name(self, default_name: str, default_extension: str = None,
                                filetypes: str = None) -> (str, None):
         if default_extension is None:
@@ -213,7 +231,8 @@ class Main:
             output(f"Save screenshot to \"{save_img_path}\"")
             return img
 
-        return screenshot_and_save()
+        self.screenshot_thread = screenshot_and_save()
+        return self.screenshot_thread
 
     def save_img_as_pdf(self, img_dir_path: str, pdf_save_path: str = None):
         if pdf_save_path is None:
@@ -230,11 +249,11 @@ class Main:
                 width, height = img.size
                 re_width = width * self.img_quantity // 100
                 re_height = width * self.img_quantity // 100
-                img.resize((re_width, re_height))
+                img_resize = img.resize((re_width, re_height))
 
                 # noinspection PyTypeChecker
                 pdf.add_page(format=(width, height))
-                pdf.image(img, x=0, y=0, w=width, h=height)  # 指定宽高
+                pdf.image(img_resize, x=0, y=0, w=width, h=height)  # 指定宽高
             except Exception:
                 output(traceback.format_exc())
         pdf.output(pdf_save_path)
@@ -313,7 +332,7 @@ class Main:
         output("Catching start")
         # 启动键盘监听线程
         self.key_listener_thread: Threaded.ThreadedResult = self.key_listener(self)
-        self.stop_listener_Thread: Threaded.ThreadedResult = self.stop_listener(self)
+        self.stop_listener_thread: Threaded.ThreadedResult = self.stop_listener(self)
         return True
 
     def catching_stop(self) -> bool:
@@ -322,6 +341,8 @@ class Main:
             return False
         self.catching_state = False
         self.key_listener_thread.thread.join(15)
+        self.stop_listener_thread.thread.join(15)
+        self.screenshot_thread.thread.join(15)
         output('Stop catching')
         if self.has_img_with_extension(".png"):
             self.save_pdf()
@@ -684,6 +705,7 @@ class ScreenCatcherGUI(QWidget):
         self.output_lines.setReadOnly(True)
         self.output_lines.setFontPointSize(self.line_font_size)
         self.output_lines.setLineWrapMode(QTextEdit.NoWrap)
+        self.output_lines.textChanged.connect(self.output_lines_auto_cursor_move)
         layout.addWidget(self.output_lines)
 
         # Select-Save-Path button and Path-line edit
@@ -694,7 +716,8 @@ class ScreenCatcherGUI(QWidget):
         self.path_button.clicked.connect(self.select_path)
         self.path_line = QLineEdit(self)
         self.path_line.setFont(self.line_font)
-        self.path_line.textChanged.connect(self.save_path_is_changed)
+        self.path_line.textChanged.connect(self.save_path_changed)
+        self.path_line.editingFinished.connect(self.on_path_line_editing_finished)
         path_layout.addWidget(self.path_button)
         path_layout.addWidget(self.path_line)
         layout.addLayout(path_layout)
@@ -759,6 +782,9 @@ class ScreenCatcherGUI(QWidget):
         # 移动窗口, 因为move方法只接受整数，所以我们类型转换一下
         self.move(new_left, new_top)
 
+    def output_lines_auto_cursor_move(self):
+        self.output_lines.moveCursor(QTextCursor.End)
+
     def update_path_line(self):
         self.path_line.setText(self.parent.pdf_save_path)
 
@@ -768,11 +794,21 @@ class ScreenCatcherGUI(QWidget):
     def select_path(self):
         self.parent.select_pdf_save_path()
 
-    def save_path_is_changed(self):
+    def save_path_changed(self):
         new_path = self.path_line.text()
-        if os.path.exists(new_path):
-            self.parent.pdf_save_path = new_path
+        new_pdf_dir_path = os.path.split(new_path)[0]
+        if os.path.exists(new_pdf_dir_path):
+            self.parent.set_pdf_path(new_path)
             self.update_path_line()
+        else:
+            output(f"PDF Save Path\"{new_pdf_dir_path}\" no found")
+
+    def on_path_line_editing_finished(self):
+        new_path = self.path_line.text()
+        new_pdf_dir_path = os.path.split(new_path)[0]
+        if os.path.exists(new_pdf_dir_path):
+            self.save_path_changed()
+            output(f"PDF Save Path change to \"{new_path}\"")
 
     def save_path_edit_finished(self):
         if not self.path_line.text() == self.parent.pdf_save_path:
