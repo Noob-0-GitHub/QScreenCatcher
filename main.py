@@ -16,13 +16,13 @@ from PyQt5 import Qt as pyqt5Qt
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QHBoxLayout, QKeySequenceEdit, QLabel, QLineEdit, \
-    QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget, QDesktopWidget
+    QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget, QDesktopWidget, QSlider
 from fpdf import FPDF
 
 CURRENT_PATH = os.path.abspath(__file__)
 WORKDIR = os.path.abspath(os.path.join(CURRENT_PATH, r".."))
 DATA_DIR = os.path.join(WORKDIR, "data")
-CONFIG_DIR = os.path.join(DATA_DIR, "config.json")
+CONFIG_DIR = os.path.join(DATA_DIR, "config")
 NAME = "QScreenCatcher"
 VERSION = 'v0.5'
 intro = f"Welcome to use {NAME} {VERSION}\n欢迎使用{NAME} {VERSION}"
@@ -83,8 +83,11 @@ class Threaded:
         def result(self):
             return self.thread.result
 
-    def __init__(self, func):  # 接受函数
-        self.func = func
+    def __init__(self, func, warp=False):  # 接受函数
+        if warp:
+            self.func: Callable = lambda *args, **kwargs: func(*args, **kwargs)
+        else:
+            self.func: Callable = func
 
     def __call__(self, *func_args, **func_kwargs):  # 返回函数
         thread = self.Thread(target=self.func, args=func_args, kwargs=func_kwargs, daemon=self.daemon)
@@ -114,10 +117,13 @@ class Main:
         self.save_img_dir_path = None
         # 定义快捷键和对应的回调函数
         self.shortcuts_keys = ['v']  # settable
-        self.shortcuts_callbacks = [lambda: self.screenshot(self)]
+        self.shortcuts_callbacks = [self.screenshot]
         self.stop_shortcut = "Esc"
         # img quantity in pdf
-        self.img_quantity: float = 1.0  # settable
+        self.img_quantity: int = 100  # settable
+        self.img_quantity_max: int = 100
+        self.img_quantity_min: int = 10
+        self.img_quantity_step: int = 1
         self.pdf_to_clipboard = True
         self.save_pdf_dir_path = None
         self.pdf_save_name = None
@@ -193,15 +199,21 @@ class Main:
         else:
             return None
 
-    @Threaded
     def screenshot(self, save_dir_path: str = None, save_img_name: str = None):
         if save_dir_path is None:
             save_dir_path = self.save_img_dir_path
         if save_img_name is None:
             save_img_name = self.current_time_str()
         save_img_path = os.path.join(save_dir_path, save_img_name + '.png')
-        _img = pyautogui.screenshot(save_img_path)
-        output(f"Save screenshot to \"{save_img_path}\"")
+
+        @Threaded
+        def screenshot_and_save():
+            img: Image.Image = pyautogui.screenshot()
+            img.save(save_img_path)
+            output(f"Save screenshot to \"{save_img_path}\"")
+            return img
+
+        return screenshot_and_save()
 
     def save_img_as_pdf(self, img_dir_path: str, pdf_save_path: str = None):
         if pdf_save_path is None:
@@ -216,27 +228,39 @@ class Main:
                 img_path = os.path.join(img_dir_path, img_name)
                 img = Image.open(img_path)
                 width, height = img.size
-                img.resize((int(width * self.img_quantity), int(height * self.img_quantity)))
+                re_width = width * self.img_quantity // 100
+                re_height = width * self.img_quantity // 100
+                img.resize((re_width, re_height))
 
                 # noinspection PyTypeChecker
                 pdf.add_page(format=(width, height))
-                pdf.image(img_path, x=0, y=0, w=width, h=height)  # 指定宽高
+                pdf.image(img, x=0, y=0, w=width, h=height)  # 指定宽高
             except Exception:
                 output(traceback.format_exc())
         pdf.output(pdf_save_path)
 
     @Threaded
     def key_listener(self):
-        keys = self.shortcuts_keys
-        callbacks: list = self.shortcuts_callbacks
-        output("key_listener ON")
-        while True:
-            if not self.catching_state:
-                output("key_listener OFF")
-                return
-            for key, callback in zip(keys, callbacks):
-                if keyboard.is_pressed(key):
-                    callback()
+        try:
+            keys = self.shortcuts_keys
+            callbacks_list: list = self.shortcuts_callbacks
+            callbacks_state: list = [False] * len(callbacks_list)
+            output("key_listener ON")
+            while True:
+                if not self.catching_state:
+                    output("key_listener OFF")
+                    return
+                index = 0
+                for key, callback in zip(keys, callbacks_list):
+                    if keyboard.is_pressed(key):
+                        if callbacks_state[index] is False:
+                            callbacks_state[index] = True
+                            callback()
+                    elif callbacks_state[index] is True:
+                        callbacks_state[index] = False
+                    index += 1
+        except Exception:
+            print(traceback.format_exc())
 
     @Threaded
     def stop_listener(self, callback: Callable = None, stop_shortcut: str = None, press_time: int = 1):
@@ -410,6 +434,57 @@ class KeyRecorder(QWidget):
         return seq_string
 
 
+class SettingSlider(QWidget):
+    def __init__(self, parent, default_value: int, _max: int, _min: int, _step: int = None, tick_interval: int = None,
+                 slider_width: int = None, line_width: int = None):
+        super().__init__()
+        self.parent = parent
+        if default_value is None:
+            self.value: int = _max
+        else:
+            self.value: int = default_value
+        layout = QHBoxLayout()
+        self.slider = QSlider(Qt.Horizontal)
+        if slider_width is None:
+            self.slider.setFixedWidth(_max - _min)
+        else:
+            self.slider.setFixedWidth(slider_width)
+        self.slider.setTickPosition(QSlider.NoTicks)
+        self.slider.setMaximum(_max)
+        self.slider.setMinimum(_min)
+        if _step is not None:
+            self.slider.setSingleStep(_step)
+        if tick_interval is not None:
+            self.slider.setTickInterval(tick_interval)
+        self.slider.valueChanged.connect(self.update_value_from_silder)
+        self.line = QLineEdit(self)
+        if line_width is None:
+            self.line.setFixedWidth(len(str(_max)) * 16 + 1)
+        else:
+            self.line.setFixedWidth(line_width)
+        self.line.editingFinished.connect(self.update_value_from_line)
+        layout.addWidget(self.slider)
+        layout.addWidget(self.line)
+        self.update()
+        self.setLayout(layout)
+
+    def update_value_from_silder(self):
+        self.value = self.slider.value()
+        self.update()
+
+    def update_value_from_line(self):
+        self.value = int(self.line.text())
+        self.update()
+
+    def get_value(self):
+        return self.value
+
+    def update(self) -> None:
+        super().update()
+        self.slider.setValue(self.value)
+        self.line.setText(str(self.value))
+
+
 class SettingsContainer(dict):
     class SettingPair(list):
         def __init__(self, key, value, value_get_callback: Callable = None):
@@ -529,14 +604,35 @@ class SettingsDialog(QDialog):
         self.setWindowTitle("Screen Catcher Settings")
         layout = QVBoxLayout()
 
-        # ScreenshotShortcut setting
+        # ScreenshotShortcut Setting
         screenshot_shortcut_layout = QHBoxLayout()
         screenshot_shortcut_layout.addWidget(QLabel("Screenshot Shortcut: "))
         self.screenshot_shortcut_keyrecorder = KeyRecorder(self, self.current_settings.get("Screenshot Shortcut").value)
         self.new_settings.get("Screenshot Shortcut").value_get_callback = (
             self.screenshot_shortcut_keyrecorder.get_shortcut)
         screenshot_shortcut_layout.addWidget(self.screenshot_shortcut_keyrecorder)
+        screenshot_shortcut_layout.addStretch()
         layout.addLayout(screenshot_shortcut_layout)
+
+        # img Quantity Setting
+        img_quantity_layout = QHBoxLayout()
+        img_quantity_layout.addWidget(QLabel("img Quantity: "))
+        self.img_quantity_slider = SettingSlider(
+            parent=self,
+            default_value=self.current_settings.get("img Quantity").value,
+            _max=self.setting_manager.main_instance.img_quantity_max,
+            _min=self.setting_manager.main_instance.img_quantity_min,
+            _step=self.setting_manager.main_instance.img_quantity_step,
+            tick_interval=True,
+            slider_width=128,
+            line_width=64
+        )
+        self.img_quantity_slider.layout().addWidget(QLabel("%"))
+        self.new_settings.get("img Quantity").value_get_callback = (
+            self.img_quantity_slider.get_value)
+        img_quantity_layout.addWidget(self.img_quantity_slider)
+        img_quantity_layout.addStretch()
+        layout.addLayout(img_quantity_layout)
 
         # apply button and cancel Button
         apply_cancel_layout = QHBoxLayout()
@@ -757,6 +853,9 @@ if __name__ == '__main__':
         output(intro, print_time=False)
         output(user_help.format(main=main), print_time=False)
         main.main_ui.set_stay_ont_the_top(value=False, show=True)
-        sys.exit(app.exec_())
+        return_code = app.exec_()
+        if return_code != 0:
+            print(traceback.format_exc())
+        sys.exit(return_code)
     except Exception:
         output(traceback.format_exc())
