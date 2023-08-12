@@ -26,8 +26,8 @@ CONFIG_DIR = os.path.join(DATA_DIR, "config")
 NAME = "QScreenCatcher"
 VERSION = 'v0.5'
 intro = f"Welcome to use {NAME} {VERSION}\n欢迎使用{NAME} {VERSION}"
-user_help = ("Press \"{main.shortcuts_keys[0]}\" to Screenshot  按\"{main.shortcuts_keys[0]}\"截图 \n"
-             "Press \"ESC\" for 1s to stop catching  长按\"ESC\"1秒停止截图")
+user_help = ("Press \"{main.shortcuts_keys[0]}\" to Screenshot in catching  捕捉模式中按\"{main.shortcuts_keys[0]}\"截图 \n"
+             "Press \"ESC\" for 1s to stop catching  捕捉模式中长按\"ESC\"1秒停止捕捉")
 
 # qt_material must import after PyQt5
 import qt_material
