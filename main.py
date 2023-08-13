@@ -293,9 +293,7 @@ class Main:
             print(traceback.format_exc())
 
     @Threaded
-    def stop_listener(self, callback: Callable = None, stop_shortcut: str = None, press_time: int = 1):
-        if callback is None:
-            callback: Callable = self.catching_stop
+    def stop_listener(self, stop_shortcut: str = None, press_time: int = 1):
         if stop_shortcut is None:
             stop_shortcut = self.stop_shortcut
         # 长按 press_time 秒后触发回调函数
@@ -310,7 +308,7 @@ class Main:
                     break
             else:
                 esc_pressed_time = 0
-        callback()
+        self.catching_stop(check_stop_listener=False)
 
     def create_tem_img_dir(self, name: str = None, path: str = None):
         if name is None:
@@ -346,16 +344,16 @@ class Main:
         self.stop_listener_thread: Threaded.ThreadedResult = self.stop_listener(self)
         return True
 
-    def catching_stop(self) -> bool:
+    def catching_stop(self, check_key_listener=True, check_stop_listener=True, check_screenshot=True) -> bool:
         if self.catching_state is False:
             output('Warning: No current catching!')
             return False
         self.catching_state = False
-        if self.key_listener_thread is not None:
+        if self.key_listener_thread is not None and check_key_listener:
             self.key_listener_thread.thread.join(15)
-        if self.stop_listener_thread is not None:
+        if self.stop_listener_thread is not None and check_stop_listener:
             self.stop_listener_thread.thread.join(15)
-        if self.screenshot_thread is not None:
+        if self.screenshot_thread is not None and check_screenshot:
             self.screenshot_thread.thread.join(15)
         output('Stop catching')
         if self.has_img_with_extension(self.img_extension):
@@ -512,8 +510,11 @@ class SettingSlider(QWidget):
         self.update()
 
     def update_value_from_line(self):
-        self.value = int(self.line.text())
-        self.value_check()
+        try:
+            self.value = int(self.line.text())
+            self.value_check()
+        except Exception as e:
+            output(e)
         self.update()
 
     def value_check(self):
