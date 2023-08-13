@@ -178,10 +178,10 @@ class Main:
 
     @property
     def img_extension(self):
-        if self.img_quality > 95:
-            return "jpg"
+        if self.img_quality < 95:
+            return ".jpg"
         else:
-            return "png"
+            return ".png"
 
     def has_img_with_extension(self, extension: str, dir_path: str = None):
         if dir_path is None:
@@ -238,9 +238,9 @@ class Main:
         @Threaded
         def screenshot_and_save():
             img: Image.Image = pyautogui.screenshot()
-            if self.img_extension == "jpg":
+            if self.img_extension == ".jpg":
                 img.save(save_img_path, quality=self.img_quality, optimize=True)
-            elif self.img_extension == "png":
+            elif self.img_extension == ".png":
                 img.save(save_img_path)
             img.save(save_img_path, quality=self.img_quality)
             output(f"Save screenshot to \"{save_img_path}\"")
@@ -251,7 +251,7 @@ class Main:
 
     def save_img_as_pdf(self, img_dir_path: str, pdf_save_path: str = None):
         if pdf_save_path is None:
-            pdf_save_path: str = os.path.join(img_dir_path, "%s.pdf" % self.current_time_str())
+            pdf_save_path: str = os.path.join(img_dir_path, f"{self.current_time_str()}{self.pdf_default_extension}")
         pdf = FPDF(unit="pt")
         pdf.set_auto_page_break(False)  # 自动分页设为False
         image_list = list(os.listdir(img_dir_path))
@@ -262,13 +262,9 @@ class Main:
                 img_path = os.path.join(img_dir_path, img_name)
                 img = Image.open(img_path)
                 width, height = img.size
-                re_width = width * self.img_quality // 100
-                re_height = width * self.img_quality // 100
-                img_resize = img.resize((re_width, re_height))
-
                 # noinspection PyTypeChecker
                 pdf.add_page(format=(width, height))
-                pdf.image(img_resize, x=0, y=0, w=width, h=height)  # 指定宽高
+                pdf.image(img, x=0, y=0, w=width, h=height)  # 指定宽高
             except Exception:
                 output(traceback.format_exc())
         pdf.output(pdf_save_path)
@@ -355,9 +351,12 @@ class Main:
             output('Warning: No current catching!')
             return False
         self.catching_state = False
-        self.key_listener_thread.thread.join(15)
-        self.stop_listener_thread.thread.join(15)
-        self.screenshot_thread.thread.join(15)
+        if self.key_listener_thread is not None:
+            self.key_listener_thread.thread.join(15)
+        if self.stop_listener_thread is not None:
+            self.stop_listener_thread.thread.join(15)
+        if self.screenshot_thread is not None:
+            self.screenshot_thread.thread.join(15)
         output('Stop catching')
         if self.has_img_with_extension(self.img_extension):
             self.save_pdf()
@@ -479,6 +478,9 @@ class SettingSlider(QWidget):
             self.value: int = _max
         else:
             self.value: int = default_value
+        self.value_max = _max
+        self.value_min = _min
+        self.value_step = _step
         layout = QHBoxLayout()
         self.slider = QSlider(Qt.Horizontal)
         if slider_width is None:
@@ -506,10 +508,19 @@ class SettingSlider(QWidget):
 
     def update_value_from_silder(self):
         self.value = self.slider.value()
+        self.value_check()
         self.update()
 
     def update_value_from_line(self):
         self.value = int(self.line.text())
+        self.value_check()
+        self.update()
+
+    def value_check(self):
+        if self.value < self.value_min:
+            self.value = self.value_min
+        elif self.value > self.value_max:
+            self.value = self.value_max
         self.update()
 
     def get_value(self):
@@ -663,7 +674,6 @@ class SettingsDialog(QDialog):
             slider_width=128,
             line_width=64
         )
-        self.img_quality_slider.layout().addWidget(QLabel("%"))
         self.new_settings.get("img Quality").value_get_callback = (
             self.img_quality_slider.get_value)
         img_quality_layout.addWidget(self.img_quality_slider)
@@ -799,6 +809,7 @@ class ScreenCatcherGUI(QWidget):
 
     def output_lines_auto_cursor_move(self):
         self.output_lines.moveCursor(QTextCursor.End)
+        self.output_lines.moveCursor(QTextCursor.StartOfLine)
 
     def update_start_stop_button_state(self):
         self.start_stop_button_state = self.parent.catching_state
@@ -830,6 +841,8 @@ class ScreenCatcherGUI(QWidget):
 
     def save_path_changed(self):
         new_path = self.path_line.text()
+        if new_path == str():
+            return
         new_pdf_dir_path = os.path.split(new_path)[0]
         if os.path.exists(new_pdf_dir_path):
             self.parent.set_pdf_path(new_path)
