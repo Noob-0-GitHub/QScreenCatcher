@@ -110,20 +110,20 @@ class PushButton(QPushButton):
 
 class Main:
     def __init__(self):
-        self.catching_state = False
-        self.default_extension = ".pdf"
-        self.filetypes = "PDF Files (*.pdf)"
+        self.pdf_default_extension = ".pdf"
+        self.pdf_filetypes = "PDF Files (*.pdf)"
         self.img_create_dir_path = DATA_DIR
+        self.catching_state = False
         self.save_img_dir_path = None
         # 定义快捷键和对应的回调函数
         self.shortcuts_keys = ['v']  # settable
         self.shortcuts_callbacks = [self.screenshot]
         self.stop_shortcut = "Esc"
-        # img quantity in pdf
-        self.img_quantity: int = 100  # settable
-        self.img_quantity_max: int = 100
-        self.img_quantity_min: int = 10
-        self.img_quantity_step: int = 1
+        # img quality in pdf
+        self.img_quality: int = 85  # settable
+        self.img_quality_max: int = 100
+        self.img_quality_min: int = 10
+        self.img_quality_step: int = 1
         self.pdf_to_clipboard = True
         self.save_pdf_dir_path = None
         self.pdf_save_name = None
@@ -172,6 +172,17 @@ class Main:
         formatted_time = ".".join(components)
         return formatted_time
 
+    @property
+    def user_help(self):
+        return user_help.format(main=self)
+
+    @property
+    def img_extension(self):
+        if self.img_quality > 95:
+            return "jpg"
+        else:
+            return "png"
+
     def has_img_with_extension(self, extension: str, dir_path: str = None):
         if dir_path is None:
             dir_path = self.save_img_dir_path
@@ -201,9 +212,9 @@ class Main:
     def ask_save_path_and_name(self, default_name: str, default_extension: str = None,
                                filetypes: str = None) -> (str, None):
         if default_extension is None:
-            default_extension = self.default_extension
+            default_extension = self.pdf_default_extension
         if filetypes is None:
-            filetypes = self.filetypes
+            filetypes = self.pdf_filetypes
         file_path, _ = QFileDialog.getSaveFileName(None, "Save File", default_name, filetypes, default_extension)
 
         if file_path:
@@ -222,12 +233,16 @@ class Main:
             save_dir_path = self.save_img_dir_path
         if save_img_name is None:
             save_img_name = self.current_time_str()
-        save_img_path = os.path.join(save_dir_path, save_img_name + '.png')
+        save_img_path = os.path.join(save_dir_path, save_img_name + self.img_extension)
 
         @Threaded
         def screenshot_and_save():
             img: Image.Image = pyautogui.screenshot()
-            img.save(save_img_path)
+            if self.img_extension == "jpg":
+                img.save(save_img_path, quality=self.img_quality, optimize=True)
+            elif self.img_extension == "png":
+                img.save(save_img_path)
+            img.save(save_img_path, quality=self.img_quality)
             output(f"Save screenshot to \"{save_img_path}\"")
             return img
 
@@ -241,14 +256,14 @@ class Main:
         pdf.set_auto_page_break(False)  # 自动分页设为False
         image_list = list(os.listdir(img_dir_path))
         for img_name in image_list:
-            if not img_name.endswith(".png"):
+            if not img_name.endswith(self.img_extension):
                 continue
             try:
                 img_path = os.path.join(img_dir_path, img_name)
                 img = Image.open(img_path)
                 width, height = img.size
-                re_width = width * self.img_quantity // 100
-                re_height = width * self.img_quantity // 100
+                re_width = width * self.img_quality // 100
+                re_height = width * self.img_quality // 100
                 img_resize = img.resize((re_width, re_height))
 
                 # noinspection PyTypeChecker
@@ -344,7 +359,7 @@ class Main:
         self.stop_listener_thread.thread.join(15)
         self.screenshot_thread.thread.join(15)
         output('Stop catching')
-        if self.has_img_with_extension(".png"):
+        if self.has_img_with_extension(self.img_extension):
             self.save_pdf()
             if self.pdf_to_clipboard:
                 self.copy_file_to_clipboard()
@@ -553,7 +568,7 @@ class SettingsManager:
 
         self.settings: SettingsContainer[str, SettingsContainer.SettingPair] = SettingsContainer()
         self.settings.add(note='Screenshot Shortcut', key='shortcuts_keys[0]')
-        self.settings.add(note='img Quantity', key='img_quantity')
+        self.settings.add(note='img Quality', key='img_quality')
         self.settings.add(note='Theme', key='app_theme')
 
         if load_settings:
@@ -635,25 +650,25 @@ class SettingsDialog(QDialog):
         screenshot_shortcut_layout.addStretch()
         layout.addLayout(screenshot_shortcut_layout)
 
-        # img Quantity Setting
-        img_quantity_layout = QHBoxLayout()
-        img_quantity_layout.addWidget(QLabel("img Quantity: "))
-        self.img_quantity_slider = SettingSlider(
+        # img Quality Setting
+        img_quality_layout = QHBoxLayout()
+        img_quality_layout.addWidget(QLabel("img Quality: "))
+        self.img_quality_slider = SettingSlider(
             parent=self,
-            default_value=self.current_settings.get("img Quantity").value,
-            _max=self.setting_manager.main_instance.img_quantity_max,
-            _min=self.setting_manager.main_instance.img_quantity_min,
-            _step=self.setting_manager.main_instance.img_quantity_step,
+            default_value=self.current_settings.get("img Quality").value,
+            _max=self.setting_manager.main_instance.img_quality_max,
+            _min=self.setting_manager.main_instance.img_quality_min,
+            _step=self.setting_manager.main_instance.img_quality_step,
             tick_interval=True,
             slider_width=128,
             line_width=64
         )
-        self.img_quantity_slider.layout().addWidget(QLabel("%"))
-        self.new_settings.get("img Quantity").value_get_callback = (
-            self.img_quantity_slider.get_value)
-        img_quantity_layout.addWidget(self.img_quantity_slider)
-        img_quantity_layout.addStretch()
-        layout.addLayout(img_quantity_layout)
+        self.img_quality_slider.layout().addWidget(QLabel("%"))
+        self.new_settings.get("img Quality").value_get_callback = (
+            self.img_quality_slider.get_value)
+        img_quality_layout.addWidget(self.img_quality_slider)
+        img_quality_layout.addStretch()
+        layout.addLayout(img_quality_layout)
 
         # apply button and cancel Button
         apply_cancel_layout = QHBoxLayout()
@@ -785,11 +800,30 @@ class ScreenCatcherGUI(QWidget):
     def output_lines_auto_cursor_move(self):
         self.output_lines.moveCursor(QTextCursor.End)
 
-    def update_path_line(self):
-        self.path_line.setText(self.parent.pdf_save_path)
-
     def update_start_stop_button_state(self):
         self.start_stop_button_state = self.parent.catching_state
+
+    def update_start_stop_button(self):
+        self.update_start_stop_button_state()
+        if self.start_stop_button_state is False:
+            self.start_stop_button.setText("Start")
+            self.start_stop_button.setChecked(self.start_stop_button_state)
+        else:
+            self.start_stop_button.setText('Stop And Save')
+            self.start_stop_button.setChecked(self.start_stop_button_state)
+        self.start_stop_button.setToolTip(self.start_stop_button.text())
+
+    def toggle_start_stop_button(self):
+        if not self.start_stop_button.isChecked():
+            self.parent.catching_stop()
+        else:
+            self.parent.catching_start()
+            if self.parent.user_help not in self.output_lines.toPlainText():
+                output(self.parent.user_help, print_time=False)
+        self.update_start_stop_button()
+
+    def update_path_line(self):
+        self.path_line.setText(self.parent.pdf_save_path)
 
     def select_path(self):
         self.parent.select_pdf_save_path()
@@ -814,23 +848,6 @@ class ScreenCatcherGUI(QWidget):
         if not self.path_line.text() == self.parent.pdf_save_path:
             output(f"Path\"{self.path_line.text()}\" no found")
             self.select_path()
-
-    def update_start_stop_button(self):
-        self.update_start_stop_button_state()
-        if self.start_stop_button_state is False:
-            self.start_stop_button.setText("Start")
-            self.start_stop_button.setChecked(self.start_stop_button_state)
-        else:
-            self.start_stop_button.setText('Stop And Save')
-            self.start_stop_button.setChecked(self.start_stop_button_state)
-        self.start_stop_button.setToolTip(self.start_stop_button.text())
-
-    def toggle_start_stop_button(self):
-        if not self.start_stop_button.isChecked():
-            self.parent.catching_stop()
-        else:
-            self.parent.catching_start()
-        self.update_start_stop_button()
 
     def open_settings(self):
         if self.parent.catching_state:
@@ -887,7 +904,6 @@ if __name__ == '__main__':
         output_manager()
         main.main_ui.set_stay_ont_the_top(value=True, show=True)
         output(intro, print_time=False)
-        output(user_help.format(main=main), print_time=False)
         main.main_ui.set_stay_ont_the_top(value=False, show=True)
         return_code = app.exec_()
         if return_code != 0:
