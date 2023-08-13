@@ -10,3 +10,4 @@ gen
 # program data
 .data
 /data/
+!/python3.11.1/
