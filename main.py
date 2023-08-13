@@ -1,3 +1,4 @@
+import ctypes
 import json
 import os
 import shutil
@@ -14,10 +15,16 @@ import pyautogui
 from PIL import Image
 from PyQt5 import Qt as pyqt5Qt
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeySequence, QTextCursor
+from PyQt5.QtGui import QKeySequence, QTextCursor, QIcon
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QHBoxLayout, QKeySequenceEdit, QLabel, QLineEdit, \
     QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget, QDesktopWidget, QSlider
 from fpdf import FPDF
+
+# 修复PyQt5任务栏图标
+ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid")
+
+# qt_material must import after PyQt5
+import qt_material
 
 CURRENT_PATH = os.path.abspath(__file__)
 WORKDIR = os.path.abspath(os.path.join(CURRENT_PATH, r".."))
@@ -28,9 +35,6 @@ VERSION = 'v0.5'
 intro = f"Welcome to use {NAME} {VERSION}\n欢迎使用{NAME} {VERSION}"
 user_help = ("Press \"{main.shortcuts_keys[0]}\" to Screenshot in catching  捕捉模式中按\"{main.shortcuts_keys[0]}\"截图 \n"
              "Press \"ESC\" for 1s to stop catching  捕捉模式中长按\"ESC\"1秒停止捕捉")
-
-# qt_material must import after PyQt5
-import qt_material
 
 
 def get_attr(_obj: object, attr_name: str) -> Any:
@@ -775,6 +779,7 @@ class ScreenCatcherGUI(QWidget):
         self.setLayout(layout)
         self.setWindowTitle(f'ScreenCatcher-{VERSION}')
         self.resize(self.window_width, self.window_height)
+        self.setWindowIcon(QIcon(r".\QScreenCatcherIcon.png"))
         self.setFocus()
         self.center()
 
