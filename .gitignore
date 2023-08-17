@@ -1,5 +1,6 @@
-### Example user template template
-### Example user template
+# venv
+!/python3.11.1/
+/venv-python3.11.1.backup.7z
 
 # IntelliJ project files
 .idea
@@ -8,6 +9,4 @@ out
 gen
 
 # program data
-.data
 /data/
-!/python3.11.1/
