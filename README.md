@@ -1,15 +1,15 @@
-# ScreenCatcher
+# QScreenCatcher
 
 ### Introduction
 
 A simple screen capturing software that can capture the screen and export as PDF via shortcuts.
-I developed ScreenCatcher to provide an efficient and silent screenshotting solution.
+I developed QScreenCatcher to provide an efficient and silent screenshotting solution.
 I wanted to create a tool that is straightforward to use, with a focus on seamless capturing and saving.
 The app is powered by Python and PyQt, enabling cross-platform development.
 
-![Preview](https://raw.githubusercontent.com/Noob-0-GitHub/ScreenCatcher/master/Preview.png)
+![Preview](https://raw.githubusercontent.com/Noob-0-GitHub/QScreenCatcher/master/Preview.png)
 
-### Some key features ScreenCatcher has implemented:
+### Some key features QScreenCatcher has implemented:
 
 - Configurable hotkey ("V" default) to screenshot active windows
 - Temporary screenshot storage during captures
@@ -17,7 +17,7 @@ The app is powered by Python and PyQt, enabling cross-platform development.
 - Auto-copy PDFs to clipboard
 - Customizable settings (hotkeys, save locations, etc.)
 
-With ScreenCatcher, you can quickly document your work, meetings, tutorials, or anything currently shown on your screen.
+With QScreenCatcher, you can quickly document your work, meetings, tutorials, or anything currently shown on your screen.
 
 ### Setup
 
@@ -32,4 +32,4 @@ Directly download the release version and run.
 ### Additional Info
 
 Screenshots and settings files are saved to:
-"C:\ProgramData\ScreenCatcher"
+"C:\ProgramData\QScreenCatcher"

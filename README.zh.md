@@ -1,4 +1,4 @@
-# ScreenCatcher
+# QScreenCatcher
 
 ### 介绍
 
@@ -6,9 +6,9 @@
 旨在提供高效无干扰的屏幕截图解决方案。
 该应用由Python和PyQt驱动，（可能）支持跨平台。
 
-![Preview](https://gitee.com/noob-0/ScreenCatcher/raw/master/Preview.png)
+![Preview](https://gitee.com/noob-0/QScreenCatcher/raw/master/Preview.png)
 
-### ScreenCatcher已实现的一些关键功能：
+### QScreenCatcher已实现的一些关键功能：
 
 - 可配置的热键（默认为“V”）用于截取活动窗口
 - 在捕捉中进行临时截图存储
@@ -16,7 +16,7 @@
 - 自动将PDF复制到剪贴板
 - 可自定义的设置（热键、PDF保存位置等）
 
-ScreenCatcher可以快速记录您的工作、会议、教程或屏幕上显示的内容。
+QScreenCatcher可以快速记录您的工作、会议、教程或屏幕上显示的内容。
 
 ### 安装教程
 
@@ -28,4 +28,4 @@ ScreenCatcher可以快速记录您的工作、会议、教程或屏幕上显示�
 2. 按下*Start*开始捕捉，按下*Stop and save*结束捕捉，具体见软件GUI(真的很简单)
 
 ### 补充
-图片以及设置文件的保存位置："C:\ProgramData\ScreenCatcher"
+图片以及设置文件的保存位置："C:\ProgramData\QScreenCatcher"
