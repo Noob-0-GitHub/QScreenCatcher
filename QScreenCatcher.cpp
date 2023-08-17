@@ -1,7 +1,6 @@
 #include <windows.h>
 #include <string>
 #include <cstdlib>
-#include <windows.h>
 
 int main()
 {

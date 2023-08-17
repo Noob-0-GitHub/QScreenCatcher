@@ -17,8 +17,9 @@ from PyQt5 import Qt as pyqt5Qt
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence, QTextCursor, QIcon
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QHBoxLayout, QKeySequenceEdit, QLabel, QLineEdit, \
-    QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget, QDesktopWidget, QSlider
+    QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget, QDesktopWidget, QSlider, QCheckBox
 from fpdf import FPDF
+from plyer import notification
 
 # 修复PyQt5任务栏图标
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid")
@@ -30,8 +31,9 @@ CURRENT_PATH = os.path.abspath(__file__)
 WORKDIR = os.path.abspath(os.path.join(CURRENT_PATH, r".."))
 DATA_DIR = os.path.join(WORKDIR, "data")
 CONFIG_DIR = os.path.join(DATA_DIR, "config")
+ICON_PATH = r".\QScreenCatcherIcon.ico"
 NAME = "QScreenCatcher"
-VERSION = 'v0.5'
+VERSION = 'v0.6'
 intro = f"Welcome to use {NAME} {VERSION}\n欢迎使用{NAME} {VERSION}"
 user_help = ("Press \"{main.shortcuts_keys[0]}\" to Screenshot in catching  捕捉模式中按\"{main.shortcuts_keys[0]}\"截图 \n"
              "Press \"ESC\" for 1s to stop catching  捕捉模式中长按\"ESC\"1秒停止捕捉")
@@ -123,6 +125,8 @@ class Main:
         self.shortcuts_keys = ['v']  # settable
         self.shortcuts_callbacks = [self.screenshot]
         self.stop_shortcut = "Esc"
+        # Screenshot Notification
+        self.screenshot_notification_enable = True
         # img quality in pdf
         self.img_quality: int = 85  # settable
         self.img_quality_max: int = 100
@@ -242,11 +246,16 @@ class Main:
         @Threaded
         def screenshot_and_save():
             img: Image.Image = pyautogui.screenshot()
+            output(f"Screenshot \"{save_img_name + self.img_extension}\"")
+            if self.screenshot_notification_enable:
+                self.main_ui.show_notification(
+                    message=f"Screenshot \"{save_img_name + self.img_extension}\"",
+                    title="",
+                )
             if self.img_extension == ".jpg":
                 img.save(save_img_path, quality=self.img_quality, optimize=True)
             elif self.img_extension == ".png":
                 img.save(save_img_path)
-            img.save(save_img_path, quality=self.img_quality)
             output(f"Save screenshot to \"{save_img_path}\"")
             return img
 
@@ -537,6 +546,16 @@ class SettingSlider(QWidget):
         self.line.setText(str(self.value))
 
 
+class SettingCheckBox(QCheckBox):
+    def __init__(self, text, parent=None, default_value=False):
+        super().__init__(text)
+        self.parent = parent
+        self.setChecked(default_value)
+
+    def get_value(self):
+        return self.isChecked()
+
+
 class SettingsContainer(dict):
     class SettingPair(list):
         def __init__(self, key, value, value_get_callback: Callable = None):
@@ -584,6 +603,7 @@ class SettingsManager:
 
         self.settings: SettingsContainer[str, SettingsContainer.SettingPair] = SettingsContainer()
         self.settings.add(note='Screenshot Shortcut', key='shortcuts_keys[0]')
+        self.settings.add(note='Screenshot Notification', key='screenshot_notification_enable')
         self.settings.add(note='img Quality', key='img_quality')
         self.settings.add(note='Theme', key='app_theme')
 
@@ -659,7 +679,10 @@ class SettingsDialog(QDialog):
         # ScreenshotShortcut Setting
         screenshot_shortcut_layout = QHBoxLayout()
         screenshot_shortcut_layout.addWidget(QLabel("Screenshot Shortcut: "))
-        self.screenshot_shortcut_keyrecorder = KeyRecorder(self, self.current_settings.get("Screenshot Shortcut").value)
+        self.screenshot_shortcut_keyrecorder = KeyRecorder(
+            parent=self,
+            default_key=self.current_settings.get("Screenshot Shortcut").value
+        )
         self.new_settings.get("Screenshot Shortcut").value_get_callback = (
             self.screenshot_shortcut_keyrecorder.get_shortcut)
         screenshot_shortcut_layout.addWidget(self.screenshot_shortcut_keyrecorder)
@@ -684,6 +707,19 @@ class SettingsDialog(QDialog):
         img_quality_layout.addWidget(self.img_quality_slider)
         img_quality_layout.addStretch()
         layout.addLayout(img_quality_layout)
+
+        # Screenshot Notification setting
+        screenshot_notification_layout = QHBoxLayout()
+        self.screenshot_notification_checkbox = SettingCheckBox(
+            text="Screenshot Notification",
+            parent=self,
+            default_value=self.current_settings.get("Screenshot Notification").value
+        )
+        self.new_settings.get("Screenshot Notification").value_get_callback = (
+            self.screenshot_notification_checkbox.get_value)
+        screenshot_notification_layout.addWidget(self.screenshot_notification_checkbox)
+        screenshot_notification_layout.addStretch()
+        layout.addLayout(screenshot_notification_layout)
 
         # apply button and cancel Button
         apply_cancel_layout = QHBoxLayout()
@@ -779,7 +815,8 @@ class ScreenCatcherGUI(QWidget):
         self.setLayout(layout)
         self.setWindowTitle(f'ScreenCatcher-{VERSION}')
         self.resize(self.window_width, self.window_height)
-        self.setWindowIcon(QIcon(r".\QScreenCatcherIcon.png"))
+        self.icon = QIcon(ICON_PATH)
+        self.setWindowIcon(self.icon)
         self.setFocus()
         self.center()
 
@@ -876,6 +913,17 @@ class ScreenCatcherGUI(QWidget):
                 self.parent.setting_manager.setting_dialog()
             except Exception:
                 output(traceback.format_exc())
+
+    @staticmethod
+    def show_notification(message: str, title: str, app_name: str = NAME, timeout: int = 5,
+                          app_icon: str = ICON_PATH):
+        notification.notify(
+            title=title,
+            message=message,
+            app_name=app_name,
+            timeout=timeout,
+            app_icon=app_icon,
+        )
 
     def output(self, _str) -> bool:
         try:
