@@ -17,7 +17,8 @@ The app is powered by Python and PyQt, enabling cross-platform development.
 - Auto-copy PDFs to clipboard
 - Customizable settings (hotkeys, save locations, etc.)
 
-With QScreenCatcher, you can quickly document your work, meetings, tutorials, or anything currently shown on your screen.
+With QScreenCatcher, you can quickly document your work, meetings, tutorials, or anything currently shown on your
+screen.
 
 ### Setup
 
@@ -32,4 +33,13 @@ Directly download the release version and run.
 ### Additional Info
 
 Screenshots and settings files are saved to:
-"C:\ProgramData\QScreenCatcher"
+".\data"
+
+### Acknowledgments
+
+<div align="center">
+   <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg" />
+   <div>
+      Special thanks to <a href="https://jb.gg/OpenSourceSupport">JetBrains</a> for their generous support to this project.
+   </div>
+</div>

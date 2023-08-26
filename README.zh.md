@@ -28,4 +28,14 @@ QScreenCatcher可以快速记录您的工作、会议、教程或屏幕上显示
 2. 按下*Start*开始捕捉，按下*Stop and save*结束捕捉，具体见软件GUI(真的很简单)
 
 ### 补充
+
 图片以及设置文件的保存位置："C:\ProgramData\QScreenCatcher"
+
+### 致谢
+
+<div align="center">
+   <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg" />
+   <div>
+      感谢 <a href="https://jb.gg/OpenSourceSupport">JetBrains</a> 为本项目提供的大力支持
+   </div>
+</div>

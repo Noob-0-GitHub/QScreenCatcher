@@ -16,19 +16,20 @@ from PIL import Image
 from PyQt5 import Qt as pyqt5Qt
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence, QTextCursor, QIcon
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, QHBoxLayout, QKeySequenceEdit, QLabel, QLineEdit, \
-    QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget, QDesktopWidget, QSlider, QCheckBox
+from PyQt5.QtWidgets import QApplication, QCheckBox, QDialog, QDesktopWidget, QFileDialog, QHBoxLayout, \
+    QKeySequenceEdit, QLabel, QLineEdit, QMessageBox, QPushButton, QSlider, QTextEdit, QVBoxLayout, QWidget
 from fpdf import FPDF
 from plyer import notification
 
-# 修复PyQt5任务栏图标
-ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid")
+if sys.platform == "win32":
+    # 修复PyQt5任务栏图标
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("myappid")
 
 # qt_material must import after PyQt5
 import qt_material
 
 CURRENT_PATH = os.path.abspath(__file__)
-WORKDIR = os.path.abspath(os.path.join(CURRENT_PATH, r".."))
+WORKDIR = os.getcwd()
 DATA_DIR = os.path.join(WORKDIR, "data")
 CONFIG_DIR = os.path.join(DATA_DIR, "config")
 ICON_PATH = r".\QScreenCatcherIcon.ico"
