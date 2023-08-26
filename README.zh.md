@@ -29,7 +29,7 @@ QScreenCatcher可以快速记录您的工作、会议、教程或屏幕上显示
 
 ### 补充
 
-图片以及设置文件的保存位置："C:\ProgramData\QScreenCatcher"
+图片以及设置文件的保存位置：".\data"
 
 ### 致谢
 
