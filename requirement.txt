@@ -1,0 +1,6 @@
+keyboard
+pyautogui
+PyQt5
+fpdf2
+plyer
+qt_material

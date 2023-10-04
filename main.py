@@ -28,14 +28,15 @@ if sys.platform == "win32":
 # qt_material must import after PyQt5
 import qt_material
 
+__version__ = 'v0.6'
+
 CURRENT_PATH = os.path.abspath(__file__)
 WORKDIR = os.getcwd()
 DATA_DIR = os.path.join(WORKDIR, "data")
 CONFIG_DIR = os.path.join(DATA_DIR, "config")
 ICON_PATH = r".\QScreenCatcherIcon.ico"
 NAME = "QScreenCatcher"
-VERSION = 'v0.6'
-intro = f"Welcome to use {NAME} {VERSION}\n欢迎使用{NAME} {VERSION}"
+intro = f"Welcome to use {NAME} {__version__}\n欢迎使用{NAME} {__version__}"
 user_help = ("Press \"{main.shortcuts_keys[0]}\" to Screenshot in catching  捕捉模式中按\"{main.shortcuts_keys[0]}\"截图 \n"
              "Press \"ESC\" for 1s to stop catching  捕捉模式中长按\"ESC\"1秒停止捕捉")
 
@@ -587,7 +588,7 @@ class SettingsContainer(dict):
     def add(self, note: str, key: str, value=None):
         self[note] = self.SettingPair(key=key, value=value)
 
-    def get(self, __key: str) -> SettingPair | None:
+    def get(self, __key: str) -> (SettingPair, None):
         return super().get(__key)
 
     def deepcopy(self):
@@ -814,7 +815,7 @@ class ScreenCatcherGUI(QWidget):
         layout.addLayout(start_stop_exit_layout)
 
         self.setLayout(layout)
-        self.setWindowTitle(f'ScreenCatcher-{VERSION}')
+        self.setWindowTitle(f'ScreenCatcher-{__version__}')
         self.resize(self.window_width, self.window_height)
         self.icon = QIcon(ICON_PATH)
         self.setWindowIcon(self.icon)
